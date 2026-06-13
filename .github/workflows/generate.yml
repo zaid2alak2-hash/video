@@ -3,10 +3,13 @@ name: Generate Videos
 on:
   workflow_dispatch:
     inputs:
-      range:
-        description: 'نطاق الملفات (مثال: 59-83)'
+      drive_url:
+        description: 'https://drive.google.com/drive/folders/1IQv9DX7yzj3iKrbipCDE-1ZqsQkfmtjw?usp=sharing'
         required: true
-        default: '51-75'
+      folder_name:
+        description: 'اسم المجلد بعد التحميل (مثال: pdf01)'
+        required: true
+        default: 'pdf01'
 
 jobs:
   generate:
@@ -22,31 +25,31 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install gdown numpy Pillow opencv-python-headless pydub requests
+          pip install --upgrade gdown numpy Pillow opencv-python-headless pydub requests
           ffmpeg -version | head -1
 
       - name: Download project from Drive
         run: |
-          pip install --upgrade gdown
-          gdown --folder "https://drive.google.com/drive/folders/10BY_AlBq5eVbnGVwLyOD_1nyVK7OM_HK"
-          rm -rf pdf10/output
+          gdown --folder "${{ github.event.inputs.drive_url }}"
           echo "📂 محتويات المجلد:"
-          ls pdf10/
+          ls ${{ github.event.inputs.folder_name }}/
           echo "📋 ملفات JSON:"
-          ls pdf10/input/json/ | wc -l
+          ls ${{ github.event.inputs.folder_name }}/input/json/ | wc -l
+          echo "🔊 ملفات Audio:"
+          ls ${{ github.event.inputs.folder_name }}/input/audio/ | wc -l
           echo "💾 حجم المشروع:"
-          du -sh pdf10/
+          du -sh ${{ github.event.inputs.folder_name }}/
 
       - name: Generate videos
         run: |
-          cd pdf10
+          cd ${{ github.event.inputs.folder_name }}
           export VIDEO_TEMP_DIR=/tmp/video_temp
           mkdir -p /tmp/video_temp output
-          python batch_generate.py --skip_existing --crf 56 --fps 20 --parts 3 --range ${{ github.event.inputs.range }}
+          python batch_generate.py --skip_existing --crf 56 --fps 20 --parts 3
 
       - name: Upload output
         uses: actions/upload-artifact@v4
         with:
-          name: output-${{ github.event.inputs.range }}
-          path: pdf10/output/
+          name: output-${{ github.event.inputs.folder_name }}
+          path: ${{ github.event.inputs.folder_name }}/output/
           retention-days: 5
