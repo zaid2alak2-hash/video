@@ -30,17 +30,29 @@ jobs:
           # تحميل ZIP من آخر Release
           gh release download --pattern "${{ github.event.inputs.project_zip }}" --dir .
           unzip "${{ github.event.inputs.project_zip }}"
+          
+          # اكتشاف اسم المجلد تلقائياً
           FOLDER_NAME="${{ github.event.inputs.project_zip }}"
           FOLDER_NAME="${FOLDER_NAME%.zip}"
+          
+          # إذا لم يوجد المجلد، يعني الملفات انفكّت مباشرة — ننقلها لمجلد
+          if [ ! -d "$FOLDER_NAME" ]; then
+            mkdir -p "$FOLDER_NAME"
+            # نقل كل الملفات والمجلدات ما عدا ZIP نفسه
+            for item in input assets *.py *.txt *.ipynb; do
+              [ -e "$item" ] && mv "$item" "$FOLDER_NAME/"
+            done
+          fi
+          
           echo "FOLDER_NAME=$FOLDER_NAME" >> $GITHUB_ENV
           echo "📂 محتويات المجلد:"
-          ls $FOLDER_NAME/
+          ls "$FOLDER_NAME"/
           echo "📋 ملفات JSON:"
-          ls $FOLDER_NAME/input/json/ | wc -l
+          ls "$FOLDER_NAME"/input/json/ | wc -l
           echo "🔊 ملفات Audio:"
-          ls $FOLDER_NAME/input/audio/ | wc -l
+          ls "$FOLDER_NAME"/input/audio/ | wc -l
           echo "💾 حجم المشروع:"
-          du -sh $FOLDER_NAME/
+          du -sh "$FOLDER_NAME"/
         env:
           GH_TOKEN: ${{ github.token }}
 
