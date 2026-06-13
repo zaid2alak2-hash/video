@@ -12,8 +12,6 @@ jobs:
   generate:
     runs-on: ubuntu-latest
     timeout-minutes: 350
-    outputs:
-      folder_name: ${{ steps.setup.outputs.folder_name }}
 
     steps:
       - uses: actions/checkout@v4
@@ -29,7 +27,6 @@ jobs:
           ffmpeg -version | head -1
 
       - name: Download and extract project
-        id: setup
         run: |
           gh release download --pattern "${{ github.event.inputs.project_zip }}" --dir .
           unzip "${{ github.event.inputs.project_zip }}"
@@ -44,7 +41,6 @@ jobs:
             done
           fi
 
-          echo "folder_name=$FOLDER_NAME" >> $GITHUB_OUTPUT
           echo "FOLDER_NAME=$FOLDER_NAME" >> $GITHUB_ENV
           echo "📂 محتويات المجلد:"
           ls "$FOLDER_NAME"/
@@ -64,60 +60,9 @@ jobs:
           mkdir -p /tmp/video_temp output
           python batch_generate.py --skip_existing --crf 56 --fps 20 --parts 3
 
-      - name: Upload WebM output
+      - name: Upload output
         uses: actions/upload-artifact@v4
         with:
-          name: webm-${{ env.FOLDER_NAME }}
+          name: output-${{ env.FOLDER_NAME }}
           path: ${{ env.FOLDER_NAME }}/output/
-          retention-days: 5
-
-  convert:
-    needs: generate
-    runs-on: macos-latest
-    timeout-minutes: 180
-
-    steps:
-      - name: Install ffmpeg (with hevc_videotoolbox)
-        run: brew install ffmpeg
-
-      - name: Download WebM artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: webm-${{ needs.generate.outputs.folder_name }}
-          path: webm_input/
-
-      - name: Convert WebM to MOV (HEVC Alpha)
-        run: |
-          mkdir -p mov_output
-          TOTAL=$(ls webm_input/*.webm 2>/dev/null | wc -l | tr -d ' ')
-          echo "📹 تحويل $TOTAL ملف WebM → MOV HEVC Alpha..."
-          COUNT=0
-          FAIL=0
-          for f in webm_input/*.webm; do
-            [ -f "$f" ] || continue
-            COUNT=$((COUNT + 1))
-            base=$(basename "$f" .webm)
-            echo "  ⏳ [$COUNT/$TOTAL] $base..."
-            ffmpeg -y \
-              -vcodec libvpx-vp9 \
-              -i "$f" \
-              -c:v hevc_videotoolbox \
-              -allow_sw 1 \
-              -alpha_quality 0.75 \
-              -b:v 360k \
-              -tag:v hvc1 \
-              -c:a aac \
-              -b:a 64k \
-              -movflags +faststart \
-              "mov_output/${base}.mov" 2>/dev/null && echo "  ✅ $base.mov" || { echo "  ❌ $base فشل"; FAIL=$((FAIL + 1)); }
-          done
-          echo ""
-          echo "📊 النتائج: $((COUNT - FAIL))/$COUNT نجح"
-          du -sh mov_output/
-
-      - name: Upload MOV output
-        uses: actions/upload-artifact@v4
-        with:
-          name: mov-${{ needs.generate.outputs.folder_name }}
-          path: mov_output/
           retention-days: 5
