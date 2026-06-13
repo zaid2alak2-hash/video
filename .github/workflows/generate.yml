@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       drive_url:
-        description: 'https://drive.google.com/drive/folders/1IQv9DX7yzj3iKrbipCDE-1ZqsQkfmtjw?usp=sharing'
+        description: 'رابط مجلد Drive المشارك (مثال: https://drive.google.com/drive/folders/XXXXX)'
         required: true
       folder_name:
         description: 'اسم المجلد بعد التحميل (مثال: pdf01)'
