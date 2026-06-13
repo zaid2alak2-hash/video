@@ -3,13 +3,10 @@ name: Generate Videos
 on:
   workflow_dispatch:
     inputs:
-      drive_url:
-        description: 'رابط مجلد Drive المشارك (مثال: https://drive.google.com/drive/folders/XXXXX)'
+      project_zip:
+        description: 'اسم ملف ZIP في آخر Release (مثال: pdf01.zip)'
         required: true
-      folder_name:
-        description: 'اسم المجلد بعد التحميل (مثال: pdf01)'
-        required: true
-        default: 'pdf01'
+        default: 'pdf01.zip'
 
 jobs:
   generate:
@@ -25,24 +22,31 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install --upgrade gdown numpy Pillow opencv-python-headless pydub requests
+          pip install numpy Pillow opencv-python-headless pydub requests
           ffmpeg -version | head -1
 
-      - name: Download project from Drive
+      - name: Download and extract project
         run: |
-          gdown --folder "${{ github.event.inputs.drive_url }}"
+          # تحميل ZIP من آخر Release
+          gh release download --pattern "${{ github.event.inputs.project_zip }}" --dir .
+          unzip "${{ github.event.inputs.project_zip }}"
+          FOLDER_NAME="${{ github.event.inputs.project_zip }}"
+          FOLDER_NAME="${FOLDER_NAME%.zip}"
+          echo "FOLDER_NAME=$FOLDER_NAME" >> $GITHUB_ENV
           echo "📂 محتويات المجلد:"
-          ls ${{ github.event.inputs.folder_name }}/
+          ls $FOLDER_NAME/
           echo "📋 ملفات JSON:"
-          ls ${{ github.event.inputs.folder_name }}/input/json/ | wc -l
+          ls $FOLDER_NAME/input/json/ | wc -l
           echo "🔊 ملفات Audio:"
-          ls ${{ github.event.inputs.folder_name }}/input/audio/ | wc -l
+          ls $FOLDER_NAME/input/audio/ | wc -l
           echo "💾 حجم المشروع:"
-          du -sh ${{ github.event.inputs.folder_name }}/
+          du -sh $FOLDER_NAME/
+        env:
+          GH_TOKEN: ${{ github.token }}
 
       - name: Generate videos
         run: |
-          cd ${{ github.event.inputs.folder_name }}
+          cd ${{ env.FOLDER_NAME }}
           export VIDEO_TEMP_DIR=/tmp/video_temp
           mkdir -p /tmp/video_temp output
           python batch_generate.py --skip_existing --crf 56 --fps 20 --parts 3
@@ -50,6 +54,6 @@ jobs:
       - name: Upload output
         uses: actions/upload-artifact@v4
         with:
-          name: output-${{ github.event.inputs.folder_name }}
-          path: ${{ github.event.inputs.folder_name }}/output/
+          name: output-${{ env.FOLDER_NAME }}
+          path: ${{ env.FOLDER_NAME }}/output/
           retention-days: 5
