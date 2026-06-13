@@ -6,7 +6,7 @@ on:
       range:
         description: 'نطاق الملفات (مثال: 59-83)'
         required: true
-        default: '59-83'
+        default: '50-75'
 
 jobs:
   generate:
