@@ -27,7 +27,8 @@ jobs:
 
       - name: Download project from Drive
         run: |
-          gdown --folder "https://drive.google.com/drive/folders/10BY_AlBq5eVbnGVwLyOD_1nyVK7OM_HK" --remaining-ok
+          pip install --upgrade gdown
+          gdown --folder "https://drive.google.com/drive/folders/10BY_AlBq5eVbnGVwLyOD_1nyVK7OM_HK"
           rm -rf pdf10/output
           echo "📂 محتويات المجلد:"
           ls pdf10/
