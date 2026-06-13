@@ -1,0 +1,51 @@
+name: Generate Videos
+
+on:
+  workflow_dispatch:
+    inputs:
+      range:
+        description: 'نطاق الملفات (مثال: 59-83)'
+        required: true
+        default: '59-83'
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install gdown numpy Pillow opencv-python-headless pydub requests
+          ffmpeg -version | head -1
+
+      - name: Download project from Drive
+        run: |
+          gdown --folder "https://drive.google.com/drive/folders/10BY_AlBq5eVbnGVwLyOD_1nyVK7OM_HK" --remaining-ok
+          rm -rf pdf10/output
+          echo "📂 محتويات المجلد:"
+          ls pdf10/
+          echo "📋 ملفات JSON:"
+          ls pdf10/input/json/ | wc -l
+          echo "💾 حجم المشروع:"
+          du -sh pdf10/
+
+      - name: Generate videos
+        run: |
+          cd pdf10
+          export VIDEO_TEMP_DIR=/tmp/video_temp
+          mkdir -p /tmp/video_temp output
+          python batch_generate.py --skip_existing --crf 56 --fps 20 --parts 3 --range ${{ github.event.inputs.range }}
+
+      - name: Upload output
+        uses: actions/upload-artifact@v4
+        with:
+          name: output-${{ github.event.inputs.range }}
+          path: pdf10/output/
+          retention-days: 5
