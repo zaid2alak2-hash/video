@@ -77,6 +77,9 @@ jobs:
     timeout-minutes: 180
 
     steps:
+      - name: Install ffmpeg (with hevc_videotoolbox)
+        run: brew install ffmpeg
+
       - name: Download WebM artifacts
         uses: actions/download-artifact@v4
         with:
@@ -86,9 +89,10 @@ jobs:
       - name: Convert WebM to MOV (HEVC Alpha)
         run: |
           mkdir -p mov_output
-          TOTAL=$(ls webm_input/*.webm 2>/dev/null | wc -l)
+          TOTAL=$(ls webm_input/*.webm 2>/dev/null | wc -l | tr -d ' ')
           echo "📹 تحويل $TOTAL ملف WebM → MOV HEVC Alpha..."
           COUNT=0
+          FAIL=0
           for f in webm_input/*.webm; do
             [ -f "$f" ] || continue
             COUNT=$((COUNT + 1))
@@ -105,11 +109,10 @@ jobs:
               -c:a aac \
               -b:a 64k \
               -movflags +faststart \
-              "mov_output/${base}.mov" 2>/dev/null && echo "  ✅ $base.mov" || echo "  ❌ $base فشل"
+              "mov_output/${base}.mov" 2>/dev/null && echo "  ✅ $base.mov" || { echo "  ❌ $base فشل"; FAIL=$((FAIL + 1)); }
           done
           echo ""
-          echo "📊 النتائج:"
-          ls mov_output/*.mov 2>/dev/null | wc -l
+          echo "📊 النتائج: $((COUNT - FAIL))/$COUNT نجح"
           du -sh mov_output/
 
       - name: Upload MOV output
